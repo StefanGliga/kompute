@@ -5,6 +5,8 @@
 #include "logger/Logger.hpp"
 #include <memory>
 #include <string>
+#include <ranges>
+#include <span>
 
 namespace kp {
 
@@ -63,6 +65,32 @@ class Tensor
            const TensorTypes& tensorType = TensorTypes::eDevice);
 
     /**
+     *  Constructor with data provided which would be used to create the
+     * respective vulkan buffer and memory. Range overload.
+     *
+     *  @param physicalDevice The physical device to use to fetch properties
+     *  @param device The device to use to create the buffer and memory from
+     *  @param range Non-zero-sized range of data that will be used by the
+     * tensor
+     *  @param tensorTypes Type for the tensor which is of type TensorTypes
+     */
+    Tensor(std::shared_ptr<vk::PhysicalDevice> physicalDevice,
+           std::shared_ptr<vk::Device> device,
+           std::ranges::sized_range auto&& range,
+           const TensorDataTypes& dataType,
+           const TensorTypes& tensorType = TensorTypes::eDevice)
+    {
+        KP_LOG_DEBUG("Kompute Tensor constructor from range");
+
+        this->mPhysicalDevice = physicalDevice;
+        this->mDevice = device;
+        this->mDataType = dataType;
+        this->mTensorType = tensorType;
+
+        this->rebuild(range);
+    }
+
+    /**
      * Destructor which is in charge of freeing vulkan resources unless they
      * have been provided externally.
      */
@@ -73,11 +101,40 @@ class Tensor
      * new data as well as new potential device type.
      *
      * @param data Vector of data to use to initialise vector from
-     * @param tensorType The type to use for the tensor
      */
     void rebuild(void* data,
                  uint32_t elementTotalCount,
                  uint32_t elementMemorySize);
+
+     /**
+     * Function to trigger reinitialisation of the tensor buffer and memory with
+     * new data as well as new potential device type. Range overload.
+     *
+     * @param range Range of data to use to initialise vector from
+     */
+    void rebuild(std::ranges::sized_range auto&& range)
+    {
+        using V = std::ranges::range_value_t<decltype(range)>;
+
+        KP_LOG_DEBUG("Kompute Tensor rebuilding from range");
+
+        this->mSize = std::ranges::size(range);
+        this->mDataTypeMemorySize = sizeof(V);
+
+        if (this->mPrimaryBuffer || this->mPrimaryMemory) {
+            KP_LOG_DEBUG(
+              "Kompute Tensor destroying existing resources before rebuild");
+            this->destroy();
+        }
+
+        this->allocateMemoryCreateGPUResources();
+
+        if (this->tensorType() != Tensor::TensorTypes::eStorage) {
+            this->mapRawData();
+            //std::span<V> tnsr(, this->mSize);
+            std::ranges::copy(range, (V*)this->mRawData);
+        }
+    }
 
     /**
      * Destroys and frees the GPU resources which include the buffer and memory.
@@ -245,6 +302,19 @@ class Tensor
         return { (T*)this->mRawData, ((T*)this->mRawData) + this->size() };
     }
 
+    /**
+     * Template to get the data of the current tensor as a span of specific
+     * type, which would be any of the supported types including float, double,
+     * int32, uint32 and bool.
+     *
+     * @return Span of type provided by template.
+     */
+    template<typename T>
+    std::span<T> span()
+    {
+        return { (T*)this->mRawData, this->size() };
+    }
+
   protected:
     // -------------- ALWAYS OWNED RESOURCES
     TensorTypes mTensorType;
@@ -317,6 +387,19 @@ class TensorT : public Tensor
                      data.size());
     }
 
+    TensorT(std::shared_ptr<vk::PhysicalDevice> physicalDevice,
+            std::shared_ptr<vk::Device> device,
+            std::ranges::sized_range auto&& range,
+            const TensorTypes& tensorType = TensorTypes::eDevice)
+      : Tensor(physicalDevice,
+               device,
+               range,
+               this->dataType(),
+               tensorType)
+    {
+        KP_LOG_DEBUG("Kompute TensorT constructor from range");
+    }
+
     ~TensorT() { KP_LOG_DEBUG("Kompute TensorT destructor"); }
 
     T* data() { return (T*)this->mRawData; }
@@ -324,6 +407,11 @@ class TensorT : public Tensor
     std::vector<T> vector()
     {
         return { (T*)this->mRawData, ((T*)this->mRawData) + this->size() };
+    }
+
+    std::span<T> span()
+    {
+        return { (T*)this->mRawData, this->size() };
     }
 
     T& operator[](int index) { return *(((T*)this->mRawData) + index); }

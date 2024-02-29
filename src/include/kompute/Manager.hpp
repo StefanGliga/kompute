@@ -95,11 +95,35 @@ class Manager
         return tensor;
     }
 
+    template<typename T>
+    std::shared_ptr<TensorT<T>> tensorT(
+      std::ranges::sized_range auto&& range,
+      Tensor::TensorTypes tensorType = Tensor::TensorTypes::eDevice)
+    {
+        KP_LOG_DEBUG("Kompute Manager tensor creation triggered");
+
+        std::shared_ptr<TensorT<T>> tensor{ new kp::TensorT<T>(
+          this->mPhysicalDevice, this->mDevice, range, tensorType) };
+
+        if (this->mManageResources) {
+            this->mManagedTensors.push_back(tensor);
+        }
+
+        return tensor;
+    }
+
     std::shared_ptr<TensorT<float>> tensor(
       const std::vector<float>& data,
       Tensor::TensorTypes tensorType = Tensor::TensorTypes::eDevice)
     {
         return this->tensorT<float>(data, tensorType);
+    }
+
+    std::shared_ptr<TensorT<float>> tensor(
+      std::ranges::sized_range auto&& range,
+      Tensor::TensorTypes tensorType = Tensor::TensorTypes::eDevice)
+    {
+        return this->tensorT<float>(range, tensorType);
     }
 
     std::shared_ptr<Tensor> tensor(
