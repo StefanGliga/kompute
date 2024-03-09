@@ -435,8 +435,11 @@ Manager::createDevice(const std::vector<uint32_t>& familyQueueIndices,
                                           validExtensions.data());
 
     this->mDevice = std::make_shared<vk::Device>();
-    physicalDevice.createDevice(
+    auto res = physicalDevice.createDevice(
       &deviceCreateInfo, nullptr, this->mDevice.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createDevice");
+    }
     KP_LOG_DEBUG("Kompute Manager device created");
 
     for (const uint32_t& familyQueueIndex : this->mComputeQueueFamilyIndices) {

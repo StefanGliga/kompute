@@ -133,7 +133,10 @@ Sequence::evalAsync()
 
     this->mDevice->resetFences({ this->mFence });
 
-    this->mComputeQueue->submit(1, &submitInfo, this->mFence);
+    auto res = this->mComputeQueue->submit(1, &submitInfo, this->mFence);
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from compute queue submit");
+    }
 
     return shared_from_this();
 }
@@ -314,8 +317,11 @@ Sequence::createCommandPool()
     vk::CommandPoolCreateInfo commandPoolInfo(vk::CommandPoolCreateFlags(),
                                               this->mQueueIndex);
     this->mCommandPool = std::make_shared<vk::CommandPool>();
-    this->mDevice->createCommandPool(
+    auto res = this->mDevice->createCommandPool(
       &commandPoolInfo, nullptr, this->mCommandPool.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createCommandPool");
+    }
     KP_LOG_DEBUG("Kompute Sequence Command Pool Created");
 }
 
@@ -336,8 +342,11 @@ Sequence::createCommandBuffer()
       *this->mCommandPool, vk::CommandBufferLevel::ePrimary, 1);
 
     this->mCommandBuffer = std::make_shared<vk::CommandBuffer>();
-    this->mDevice->allocateCommandBuffers(&commandBufferAllocateInfo,
+    auto res = this->mDevice->allocateCommandBuffers(&commandBufferAllocateInfo,
                                           this->mCommandBuffer.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from allocateCommandBuffers");
+    }
     KP_LOG_DEBUG("Kompute Sequence Command Buffer Created");
 }
 
@@ -377,7 +386,7 @@ Sequence::getTimestamps()
 
     const auto n = this->mOperations.size() + 1;
     std::vector<std::uint64_t> timestamps(n, 0);
-    this->mDevice->getQueryPoolResults(
+    auto res = this->mDevice->getQueryPoolResults(
       *this->timestampQueryPool,
       0,
       n,
@@ -385,6 +394,9 @@ Sequence::getTimestamps()
       timestamps.data(),
       sizeof(uint64_t),
       vk::QueryResultFlagBits::e64 | vk::QueryResultFlagBits::eWait);
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from getQueryPoolResults");
+    }
 
     return timestamps;
 }

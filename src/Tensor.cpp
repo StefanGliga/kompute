@@ -192,7 +192,10 @@ Tensor::unmapRawData()
 
     vk::DeviceSize bufferSize = this->memorySize();
     vk::MappedMemoryRange mappedRange(*hostVisibleMemory, 0, bufferSize);
-    this->mDevice->flushMappedMemoryRanges(1, &mappedRange);
+    auto res = this->mDevice->flushMappedMemoryRanges(1, &mappedRange);
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from flushMappedMemoryRanges");
+    }
     this->mDevice->unmapMemory(*hostVisibleMemory);
 }
 
@@ -458,7 +461,10 @@ Tensor::createBuffer(std::shared_ptr<vk::Buffer> buffer,
                                     bufferUsageFlags,
                                     vk::SharingMode::eExclusive);
 
-    this->mDevice->createBuffer(&bufferInfo, nullptr, buffer.get());
+    auto res = this->mDevice->createBuffer(&bufferInfo, nullptr, buffer.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createBuffer");
+    }
 }
 
 void
@@ -501,7 +507,10 @@ Tensor::allocateBindMemory(std::shared_ptr<vk::Buffer> buffer,
     vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size,
                                               memoryTypeIndex);
 
-    this->mDevice->allocateMemory(&memoryAllocateInfo, nullptr, memory.get());
+    auto res = this->mDevice->allocateMemory(&memoryAllocateInfo, nullptr, memory.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from allocateMemory");
+    }
 
     this->mDevice->bindBufferMemory(*buffer, *memory, 0);
 }

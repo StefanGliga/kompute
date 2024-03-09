@@ -144,8 +144,11 @@ Algorithm::createParameters()
 
     KP_LOG_DEBUG("Kompute Algorithm creating descriptor pool");
     this->mDescriptorPool = std::make_shared<vk::DescriptorPool>();
-    this->mDevice->createDescriptorPool(
+    auto res = this->mDevice->createDescriptorPool(
       &descriptorPoolInfo, nullptr, this->mDescriptorPool.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createDescriptorPool");
+    }
     this->mFreeDescriptorPool = true;
 
     std::vector<vk::DescriptorSetLayoutBinding> descriptorSetBindings;
@@ -165,8 +168,11 @@ Algorithm::createParameters()
 
     KP_LOG_DEBUG("Kompute Algorithm creating descriptor set layout");
     this->mDescriptorSetLayout = std::make_shared<vk::DescriptorSetLayout>();
-    this->mDevice->createDescriptorSetLayout(
+    res = this->mDevice->createDescriptorSetLayout(
       &descriptorSetLayoutInfo, nullptr, this->mDescriptorSetLayout.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createDescriptorSetLayout");
+    }
     this->mFreeDescriptorSetLayout = true;
 
     vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo(
@@ -176,8 +182,11 @@ Algorithm::createParameters()
 
     KP_LOG_DEBUG("Kompute Algorithm allocating descriptor sets");
     this->mDescriptorSet = std::make_shared<vk::DescriptorSet>();
-    this->mDevice->allocateDescriptorSets(&descriptorSetAllocateInfo,
+    res = this->mDevice->allocateDescriptorSets(&descriptorSetAllocateInfo,
                                           this->mDescriptorSet.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from allocateDescriptorSets");
+    }
     this->mFreeDescriptorSet = true;
 
     KP_LOG_DEBUG("Kompute Algorithm updating descriptor sets");
@@ -217,8 +226,11 @@ Algorithm::createShaderModule()
                  this->mSpirv.size());
     this->mFreeShaderModule = true;
     this->mShaderModule = std::make_shared<vk::ShaderModule>();
-    this->mDevice->createShaderModule(
+    auto res = this->mDevice->createShaderModule(
       &shaderModuleInfo, nullptr, this->mShaderModule.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createShaderModule");
+    }
     this->mFreeShaderModule = true;
 
     KP_LOG_DEBUG("Kompute Algorithm create shader module success");
@@ -246,8 +258,11 @@ Algorithm::createPipeline()
     }
 
     this->mPipelineLayout = std::make_shared<vk::PipelineLayout>();
-    this->mDevice->createPipelineLayout(
+    auto res = this->mDevice->createPipelineLayout(
       &pipelineLayoutInfo, nullptr, this->mPipelineLayout.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createPipelineLayout");
+    }
     this->mFreePipelineLayout = true;
 
     std::vector<vk::SpecializationMapEntry> specializationEntries;
@@ -287,8 +302,11 @@ Algorithm::createPipeline()
     vk::PipelineCacheCreateInfo pipelineCacheInfo =
       vk::PipelineCacheCreateInfo();
     this->mPipelineCache = std::make_shared<vk::PipelineCache>();
-    this->mDevice->createPipelineCache(
+    res = this->mDevice->createPipelineCache(
       &pipelineCacheInfo, nullptr, this->mPipelineCache.get());
+    if (res != vk::Result::eSuccess) {
+        throw std::runtime_error("Error from createPipelineCache");
+    }
     this->mFreePipelineCache = true;
 
 #ifdef KOMPUTE_CREATE_PIPELINE_RESULT_VALUE
